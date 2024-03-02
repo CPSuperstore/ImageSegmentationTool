@@ -31,11 +31,12 @@ class GraphCut(segmentation_if.SegmentationInterface):
         kappa = kwargs["kappa"]
         sigma = kwargs["sigma"]
 
-        fore = (225, 142, 279, 185)
-        back = (7, 120, 61, 163)
+        # TODO: Add way to control these bboxes
+        foreground_bbox = (225, 142, 279, 185)
+        background_bbox = (7, 120, 61, 163)
 
-        foreground = pil_image.crop(fore)
-        background = pil_image.crop(back)
+        foreground = pil_image.crop(foreground_bbox)
+        background = pil_image.crop(background_bbox)
 
         foreground = array(foreground)
         background = array(background)
