@@ -3,12 +3,14 @@ import sys
 import segmentation_tool.interface.morph_acwe as morph_acwe
 import segmentation_tool.interface.morph_gac as morph_gac
 import segmentation_tool.interface.slic as slic
+import segmentation_tool.interface.graph_cut as graph_cut
 import segmentation_tool.interface.menu as menu_if
 
 MENU_REGISTER = {
     "MorphACWE": morph_acwe.MorphACWE(),
     "MorphGAC": morph_gac.MorphGAC(),
-    "SLIC": slic.SLIC()
+    "SLIC": slic.SLIC(),
+    "GraphCut": graph_cut.GraphCut()
 }
 
 if len(sys.argv) >= 3:
