@@ -24,10 +24,9 @@ class GraphCut(segmentation_if.SegmentationInterface):
         ]
 
     def _segment(self, image, kwargs):
-        # TODO: Clean up code
-        image = Image.fromarray(np.uint8(rgb2gray(image) * 255), mode='L')
+        image = np.uint8(rgb2gray(image) * 255)
 
-        image.save("tmp.png")
+        pil_image = Image.fromarray(image, mode='L')
 
         kappa = kwargs["kappa"]
         sigma = kwargs["sigma"]
@@ -35,68 +34,90 @@ class GraphCut(segmentation_if.SegmentationInterface):
         fore = (225, 142, 279, 185)
         back = (7, 120, 61, 163)
 
-        foreground = image.crop(fore)
-        background = image.crop(back)
+        foreground = pil_image.crop(fore)
+        background = pil_image.crop(back)
 
-        image = array(image)
         foreground = array(foreground)
         background = array(background)
 
         foreground_mean = mean(cv2.calcHist([foreground], [0], None, [256], [0, 256]))
         background_mean = mean(cv2.calcHist([background], [0], None, [256], [0, 256]))
 
-        F, B = ones(shape=image.shape), ones(shape=image.shape)  # initalizing the foreground/background probability vector
-        Im = image.reshape(-1, 1)  # Coverting the image array to a vector for ease.
-        m, n = image.shape[0], image.shape[1]  # copy the size
-        g, pic = maxflow.Graph[int](m, n), maxflow.Graph[int]()  # define the graph
-        structure = np.array([[inf, 0, 0],
-                              [inf, 0, 0],
-                              [inf, 0, 0]
-                              ])  # initializing the structure....
-        source, sink, J = m * n, m * n + 1, image  # Defining the Source and Sink (terminal)nodes.
-        nodes, nodeids = g.add_nodes(m * n), pic.add_grid_nodes(J.shape)  # Adding non-nodes
-        pic.add_grid_edges(nodeids, 0), pic.add_grid_tedges(nodeids, J, 255 - J)
-        gr = pic.maxflow()
-        IOut = pic.get_grid_segments(nodeids)
-        for i in range(image.shape[0]):  # Defining the Probability function....
+        # initialize the foreground/background probability vector
+        foreground_probability_vector = ones(shape=image.shape)
+        background_probability_vector = ones(shape=image.shape)
+
+        # Converting the image array to a vector for ease.
+        vector_image = image.reshape(-1, 1)
+
+        m, n = image.shape[0], image.shape[1]
+
+        graph = maxflow.Graph[int](m, n)
+        pic = maxflow.Graph[int]()
+
+        graph.add_nodes(m * n)
+        node_ids = pic.add_grid_nodes(image.shape)
+
+        pic.add_grid_edges(node_ids, 0)
+        pic.add_grid_tedges(node_ids, image, 255 - image)
+
+        pic.maxflow()
+
+        segmented = pic.get_grid_segments(node_ids)
+
+        # Define the Probability function
+        for i in range(image.shape[0]):
             for j in range(image.shape[1]):
-                F[i, j] = -log(abs(image[i, j] - foreground_mean) / (
-                        abs(image[i, j] - foreground_mean) + abs(image[i, j] - background_mean)))  # Probability of a pixel being foreground
-                B[i, j] = -log(abs(image[i, j] - background_mean) / (
-                        abs(image[i, j] - background_mean) + abs(image[i, j] - foreground_mean)))  # Probability of a pixel being background
-        F, B = F.reshape(-1, 1), B.reshape(-1, 1)  # convertingb  to column vector for ease
-        for i in range(Im.shape[0]):
-            Im[i] = Im[i] / linalg.norm(Im[i])  # normalizing the input image vector
-        w = structure  # defining the weight
-        for i in range(m * n):  # checking the 4-neighborhood pixels
-            ws = (F[i] / (F[i] + B[i]))  # source weight
-            wt = (B[i] / (F[i] + B[i]))  # sink weight
-            g.add_tedge(i, ws[0], wt)  # edges between pixels and terminal
+
+                # Probability of a pixel being in the foreground
+                foreground_probability_vector[i, j] = -log(
+                    abs(image[i, j] - foreground_mean) /
+                    (abs(image[i, j] - foreground_mean) + abs(image[i, j] - background_mean))
+                )
+
+                # Probability of a pixel being in the background
+                background_probability_vector[i, j] = -log(
+                    abs(image[i, j] - background_mean) /
+                    (abs(image[i, j] - background_mean) + abs(image[i, j] - foreground_mean))
+                )
+
+        # convert  to column vector for ease
+        foreground_probability_vector = foreground_probability_vector.reshape(-1, 1)
+        background_probability_vector = background_probability_vector.reshape(-1, 1)
+
+        # normalize the input image vector
+        for i in range(vector_image.shape[0]):
+            vector_image[i] = vector_image[i] / linalg.norm(vector_image[i])
+
+        # checking the 4-neighborhood pixels
+        for i in range(m * n):
+            source_weight = (
+                    foreground_probability_vector[i] /
+                    (foreground_probability_vector[i] + background_probability_vector[i])
+            )
+            sink_weight = (
+                    background_probability_vector[i] /
+                    (foreground_probability_vector[i] + background_probability_vector[i])
+            )
+
+            # edges between pixels and terminal
+            graph.add_tedge(i, source_weight[0], sink_weight)
+
+            # find the cost function for two pixels
             if i % n != 0:  # for left pixels
-                w = kappa * exp(-(abs(Im[i] - Im[i - 1]) ** 2) / sigma)  # the cost function for two pixels
-                g.add_edge(i, i - 1, w[0], kappa - w[0])  # edges between two pixels
-                '''Explaination of the likelihood function: * used Bayes’ theorem for conditional probabilities
-                * The function is constructed by multiplying the individual conditional probabilities of a pixel being either 
-                foreground or background in order to get the total probability. Then the class with highest probability is selected.
-                * for a pixel i in the image:
-                                   * weight from sink to i:
-                                   probabilty of i being background/sum of probabilities
-                                   * weight from source to i:
-                                   probabilty of i being foreground/sum of probabilities
-                                   * weight from i to a 4-neighbourhood pixel:
-                                    K * e−|Ii−Ij |2 / sigma
-                                     where kappa and sigma are parameters that determine hwo close the neighboring pixels are how fast the values
-                                     decay towards zero with increasing dissimilarity
-                '''
+                w = kappa * exp(-(abs(vector_image[i] - vector_image[i - 1]) ** 2) / sigma)
+                graph.add_edge(i, i - 1, w[0], kappa - w[0])  # edges between two pixels
+
             if (i + 1) % n != 0:  # for right pixels
-                w = kappa * exp(-(abs(Im[i] - Im[i + 1]) ** 2) / sigma)
-                g.add_edge(i, i + 1, w[0], kappa - w[0])  # edges between two pixels
+                w = kappa * exp(-(abs(vector_image[i] - vector_image[i + 1]) ** 2) / sigma)
+                graph.add_edge(i, i + 1, w[0], kappa - w[0])  # edges between two pixels
+
             if i // n != 0:  # for top pixels
-                w = kappa * exp(-(abs(Im[i] - Im[i - n]) ** 2) / sigma)
-                g.add_edge(i, i - n, w[0], kappa - w[0])  # edges between two pixels
+                w = kappa * exp(-(abs(vector_image[i] - vector_image[i - n]) ** 2) / sigma)
+                graph.add_edge(i, i - n, w[0], kappa - w[0])  # edges between two pixels
+
             if i // n != m - 1:  # for bottom pixels
-                w = kappa * exp(-(abs(Im[i] - Im[i + n]) ** 2) / sigma)
-                g.add_edge(i, i + n, w[0], kappa - w[0])  # edges between two pixels
+                w = kappa * exp(-(abs(vector_image[i] - vector_image[i + n]) ** 2) / sigma)
+                graph.add_edge(i, i + n, w[0], kappa - w[0])  # edges between two pixels
 
-        return skimage.measure.find_contours(IOut, 0.5)
-
+        return skimage.measure.find_contours(segmented, 0.5)
