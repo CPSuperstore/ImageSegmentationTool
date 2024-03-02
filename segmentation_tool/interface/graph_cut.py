@@ -14,6 +14,9 @@ import segmentation_tool.interface.segmentation_if as segmentation_if
 
 
 class GraphCut(segmentation_if.SegmentationInterface):
+    def _is_slow(self):
+        return True
+
     def _get_controls(self):
         return [
             segmentation_if.Control("Kappa", "number", "kappa", [0, 200], default=2),
