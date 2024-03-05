@@ -4,7 +4,9 @@ import io
 import PySimpleGUI as sg
 import cv2
 import numpy as np
+import shapely
 from PIL import Image
+from matplotlib import pyplot as plt
 
 
 class SegmentationInterface(abc.ABC):
@@ -101,13 +103,15 @@ class SegmentationInterface(abc.ABC):
             layout.append([
                 sg.Button("Home", key="--home"),
                 sg.Button("Save Image", key="--save"),
+                sg.Button("Polygon Histogram", key="--poly-histo"),
                 sg.Button("Update", key="--update")
             ])
 
         else:
             layout.append([
                 sg.Button("Home", key="--home"),
-                sg.Button("Save Image", key="--save")
+                sg.Button("Save Image", key="--save"),
+                sg.Button("Polygon Histogram", key="--poly-histo"),
             ])
 
         window = sg.Window("Image Segmentation - {}".format(self.__class__.__name__), layout, finalize=True)
@@ -149,6 +153,24 @@ class SegmentationInterface(abc.ABC):
             if event == "--thickness":
                 new_image = array.copy()
                 update_image(new_image, segments, values["--thickness"])
+
+            if event == "--poly-histo":
+                polygons = [p for p in segments if len(p) > 4]
+
+                if len(polygons) > 0:
+                    areas = [shapely.Polygon(p).area for p in polygons]
+
+                    bin_edges = np.histogram_bin_edges(areas, bins='scott')
+                    print("Generating histogram with {} bins...".format(len(bin_edges)))
+
+                    plt.hist(areas, bins=bin_edges)
+
+                    plt.yscale("log")
+                    plt.title("Extracted Polygon Area Distribution")
+                    plt.ylabel("Count")
+                    plt.xlabel("Area")
+
+                    plt.show()
 
         window.close()
 
