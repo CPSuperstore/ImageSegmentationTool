@@ -5,12 +5,14 @@ import segmentation_tool.interface.morph_gac as morph_gac
 import segmentation_tool.interface.slic as slic
 import segmentation_tool.interface.graph_cut as graph_cut
 import segmentation_tool.interface.menu as menu_if
+import segmentation_tool.interface.manual_segmentation as manual_segmentation
 
 MENU_REGISTER = {
     "MorphACWE": morph_acwe.MorphACWE(),
     "MorphGAC": morph_gac.MorphGAC(),
     "SLIC": slic.SLIC(),
-    "GraphCut": graph_cut.GraphCut()
+    "GraphCut": graph_cut.GraphCut(),
+    "ManualSegmentation": manual_segmentation
 }
 
 if len(sys.argv) >= 3:
