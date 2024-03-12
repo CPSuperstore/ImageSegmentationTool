@@ -1,5 +1,6 @@
 import abc
 import io
+import pickle
 
 import PySimpleGUI as sg
 import cv2
@@ -7,6 +8,7 @@ import numpy as np
 import shapely
 from PIL import Image
 from matplotlib import pyplot as plt
+from scipy import ndimage
 
 
 class SegmentationInterface(abc.ABC):
@@ -44,6 +46,9 @@ class SegmentationInterface(abc.ABC):
     def start(self, image_path: str):
         def update_image(image_array, polygons=None, thickness=1):
             nonlocal last_image
+            nonlocal latest_segments
+
+            latest_segments = polygons
 
             if polygons is not None:
 
@@ -78,6 +83,10 @@ class SegmentationInterface(abc.ABC):
         array = np.array(im, dtype=np.uint8)
         array = array[:, :, :3]
 
+        original_array = array.copy()
+
+        latest_segments = []
+
         layout = [
             [
                 sg.Graph(
@@ -104,6 +113,7 @@ class SegmentationInterface(abc.ABC):
                 sg.Button("Home", key="--home"),
                 sg.Button("Save Image", key="--save"),
                 sg.Button("Polygon Histogram", key="--poly-histo"),
+                sg.Button("Export Segmentation", key="--export"),
                 sg.Button("Update", key="--update")
             ])
 
@@ -112,7 +122,17 @@ class SegmentationInterface(abc.ABC):
                 sg.Button("Home", key="--home"),
                 sg.Button("Save Image", key="--save"),
                 sg.Button("Polygon Histogram", key="--poly-histo"),
+                sg.Button("Export Segmentation", key="--export"),
             ])
+
+        layout.append([
+            sg.Slider(
+                range=[0, 30], default_value=0, enable_events=False,
+                resolution=1,
+                orientation='horizontal', key="--median-filter-size"
+            ),
+            sg.Button("Median Filter", key="--median-filter"),
+        ])
 
         window = sg.Window("Image Segmentation - {}".format(self.__class__.__name__), layout, finalize=True)
         graph = window["-GRAPH-"]
@@ -150,9 +170,30 @@ class SegmentationInterface(abc.ABC):
                 if path != "":
                     last_image.save(path)
 
+            if event == "--export":
+                path = sg.filedialog.asksaveasfilename(
+                    filetypes=(("Segmentation Data", "*.dat"),),
+                    defaultextension="dat",
+                    parent=window.TKroot,
+                    title="Save As"
+                )
+
+                if path != "":
+                    with open(path, 'wb') as f:
+                        f.write(pickle.dumps(latest_segments))
+
             if event == "--thickness":
                 new_image = array.copy()
                 update_image(new_image, segments, values["--thickness"])
+
+            if event == "--median-filter":
+                size = int(values["--median-filter-size"])
+                array = original_array.copy()
+
+                if size > 0:
+                    array = ndimage.median_filter(array, size=size)
+
+                update_image(array.copy(), segments, values["--thickness"])
 
             if event == "--poly-histo":
                 polygons = [p for p in segments if len(p) > 4]

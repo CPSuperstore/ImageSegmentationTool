@@ -31,15 +31,18 @@ class GraphCut(segmentation_if.SegmentationInterface):
         kappa = kwargs["kappa"]
         sigma = kwargs["sigma"]
 
-        # TODO: Add way to control these bboxes
-        foreground_bbox = (225, 142, 279, 185)
-        background_bbox = (7, 120, 61, 163)
+        # # TODO: Add way to control these bboxes
+        # foreground_bbox = (225, 142, 279, 185)
+        # background_bbox = (7, 120, 61, 163)
 
-        foreground = pil_image.crop(foreground_bbox)
-        background = pil_image.crop(background_bbox)
+        # foreground = pil_image.crop(foreground_bbox)
+        # background = pil_image.crop(background_bbox)
 
-        foreground = array(foreground)
-        background = array(background)
+        # foreground = array(foreground)
+        # background = array(background)
+
+        foreground = image.copy()
+        background = image.copy()
 
         foreground_mean = mean(cv2.calcHist([foreground], [0], None, [256], [0, 256]))
         background_mean = mean(cv2.calcHist([background], [0], None, [256], [0, 256]))
