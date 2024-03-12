@@ -7,7 +7,7 @@ pygame.init()
 
 
 def start(image_path: str):
-    scale = 2
+    scale = 1
     image = pygame.image.load(image_path)
     pygame.display.set_caption("Image Segmentation - Manual Segmentation")
 
@@ -23,6 +23,7 @@ def start(image_path: str):
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
+                pygame.quit()
                 return
 
             if event.type == pygame.MOUSEBUTTONDOWN:
