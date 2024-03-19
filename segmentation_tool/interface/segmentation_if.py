@@ -10,6 +10,13 @@ import shapely
 from PIL import Image
 from matplotlib import pyplot as plt
 from scipy import ndimage
+import itertools
+
+CONTOUR_COLOR_CYCLE = itertools.cycle([
+    [255, 0, 0],
+    [0, 255, 0],
+    [0, 0, 255],
+])
 
 
 class SegmentationInterface(abc.ABC):
@@ -60,7 +67,7 @@ class SegmentationInterface(abc.ABC):
                     swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
 
                     cv2.drawContours(
-                        image_array, np.array([swapped_coords]).astype(int), -1, [255, 0, 0],
+                        image_array, np.array([swapped_coords]).astype(int), -1, contour_color,
                         thickness=int(thickness)
                     )
 
@@ -95,6 +102,8 @@ class SegmentationInterface(abc.ABC):
 
         latest_segments = []
 
+        contour_color = CONTOUR_COLOR_CYCLE.__next__()
+
         layout = [
             [
                 sg.Graph(
@@ -123,6 +132,7 @@ class SegmentationInterface(abc.ABC):
                 sg.Button("Save Image", key="--save"),
                 sg.Button("Polygon Histogram", key="--poly-histo"),
                 sg.Button("Export Segmentation", key="--export"),
+                sg.Button("Contour Color", key="--contour-color"),
                 sg.Button("Update", key="--update")
             ])
 
@@ -132,6 +142,7 @@ class SegmentationInterface(abc.ABC):
                 sg.Button("Save Image", key="--save"),
                 sg.Button("Polygon Histogram", key="--poly-histo"),
                 sg.Button("Export Segmentation", key="--export"),
+                sg.Button("Contour Color", key="--contour-color"),
             ])
 
         layout.append([
@@ -198,6 +209,11 @@ class SegmentationInterface(abc.ABC):
                         f.write(pickle.dumps(latest_segments))
 
             if event == "--thickness":
+                new_image = array.copy()
+                update_image(new_image, segments, values["--thickness"])
+
+            if event == "--contour-color":
+                contour_color = CONTOUR_COLOR_CYCLE.__next__()
                 new_image = array.copy()
                 update_image(new_image, segments, values["--thickness"])
 
