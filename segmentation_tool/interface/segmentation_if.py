@@ -76,12 +76,13 @@ class SegmentationInterface(abc.ABC):
                     # draw.polygon(polygon)
 
             last_image = Image.fromarray(image_array.astype(np.uint8))
+            last_image.thumbnail((750, 500))
 
             with io.BytesIO() as output:
                 last_image.save(output, format="PNG")
                 data = output.getvalue()
 
-            graph.draw_image(data=data, location=(0, height))
+            graph.draw_image(data=data, location=(0, graph_height))
 
         segments = None
         last_image: PIL.Image.Image = None
@@ -94,9 +95,7 @@ class SegmentationInterface(abc.ABC):
         awaiting_color_button = None
 
         im = Image.open(image_path)
-        im.thumbnail((750, 500))
 
-        width, height = im.size
         array = np.array(im, dtype=np.uint8)
         array = array[:, :, :3]
 
@@ -106,12 +105,16 @@ class SegmentationInterface(abc.ABC):
 
         contour_color = CONTOUR_COLOR_CYCLE.__next__()
 
+        graph_ref = im.copy()
+        graph_ref.thumbnail((750, 500))
+        graph_width, graph_height = graph_ref.size
+
         layout = [
             [
                 sg.Graph(
-                    canvas_size=(width, height),
+                    canvas_size=(graph_width, graph_height),
                     graph_bottom_left=(0, 0),
-                    graph_top_right=(width, height),
+                    graph_top_right=(graph_width, graph_height),
                     key="-GRAPH-",
                     # change_submits=False,  # mouse click events
                     background_color='black',
