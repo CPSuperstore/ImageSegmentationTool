@@ -66,6 +66,8 @@ class SegmentationInterface(abc.ABC):
                 for segment in polygons:
                     swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
 
+                    cv2.fillPoly(image_array, np.array([swapped_coords]).astype(int), [255, 255, 255])
+
                     cv2.drawContours(
                         image_array, np.array([swapped_coords]).astype(int), -1, contour_color,
                         thickness=int(thickness)
