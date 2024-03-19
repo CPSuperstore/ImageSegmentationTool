@@ -2,6 +2,7 @@ import abc
 import io
 import pickle
 
+import PIL.Image
 import PySimpleGUI as sg
 import cv2
 import numpy as np
@@ -37,6 +38,9 @@ class SegmentationInterface(abc.ABC):
                     orientation='horizontal', key=control.kwarg
                 )
 
+            if control.control_type == "color":
+                interface_control = sg.Button("Select", key=control.kwarg, enable_events=True)
+
             interface.append([
                 sg.Text(control.display_name), interface_control
             ])
@@ -71,10 +75,14 @@ class SegmentationInterface(abc.ABC):
             graph.draw_image(data=data, location=(0, height))
 
         segments = None
-        last_image = None
+        last_image: PIL.Image.Image = None
 
         controls = self._get_controls()
         control_kwargs = [c.kwarg for c in controls]
+
+        color_button_keys = [c.kwarg for c in controls if c.control_type == "color"]
+        color_button_selections = {c.kwarg: None for c in controls if c.control_type == "color"}
+        awaiting_color_button = None
 
         im = Image.open(image_path)
         im.thumbnail((750, 500))
@@ -94,9 +102,10 @@ class SegmentationInterface(abc.ABC):
                     graph_bottom_left=(0, 0),
                     graph_top_right=(width, height),
                     key="-GRAPH-",
-                    change_submits=False,  # mouse click events
+                    # change_submits=False,  # mouse click events
                     background_color='black',
-                    drag_submits=True
+                    # drag_submits=True,
+                    enable_events=True
                 )
             ],
             [
@@ -145,7 +154,13 @@ class SegmentationInterface(abc.ABC):
                 break
 
             if (event in control_kwargs and not self._is_slow()) or (self._is_slow() and event == "--update"):
-                kwargs = {k: values[k] for k in control_kwargs}
+                for v in color_button_selections.values():
+                    if v is None:
+                        continue
+
+                kwargs = {k: values[k] for k in control_kwargs if k not in color_button_keys}
+                kwargs.update(color_button_selections)
+
                 new_image = array.copy()
 
                 segments = self._segment(new_image, kwargs)
@@ -212,6 +227,19 @@ class SegmentationInterface(abc.ABC):
                     plt.xlabel("Area")
 
                     plt.show()
+
+            if event in color_button_keys:
+                awaiting_color_button = event
+
+            if event == '-GRAPH-':
+                if awaiting_color_button is not None:
+                    x, y = values[event]
+                    color = last_image.getpixel((x, last_image.height - y))
+
+                    window[awaiting_color_button].update(button_color=('black', '#%02x%02x%02x' % color))
+                    color_button_selections[awaiting_color_button] = color
+
+                    awaiting_color_button = None
 
         window.close()
 

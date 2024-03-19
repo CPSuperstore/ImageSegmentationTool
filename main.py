@@ -6,13 +6,15 @@ import segmentation_tool.interface.slic as slic
 import segmentation_tool.interface.graph_cut as graph_cut
 import segmentation_tool.interface.menu as menu_if
 import segmentation_tool.interface.manual_segmentation as manual_segmentation
+import segmentation_tool.interface.threshold_segmentation as threshold_segmentation
 
 MENU_REGISTER = {
     "MorphACWE": morph_acwe.MorphACWE(),
     "MorphGAC": morph_gac.MorphGAC(),
     "SLIC": slic.SLIC(),
     "GraphCut": graph_cut.GraphCut(),
-    "ManualSegmentation": manual_segmentation
+    "ManualSegmentation": manual_segmentation,
+    "ThresholdSegmentation": threshold_segmentation.ThresholdSegmentation()
 }
 
 if len(sys.argv) >= 3:
