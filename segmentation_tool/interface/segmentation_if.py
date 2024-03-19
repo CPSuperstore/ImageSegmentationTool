@@ -138,6 +138,7 @@ class SegmentationInterface(abc.ABC):
                 sg.Button("Polygon Histogram", key="--poly-histo"),
                 sg.Button("Export Segmentation", key="--export"),
                 sg.Button("Contour Color", key="--contour-color"),
+                sg.Button("Reset", key="--reset"),
                 sg.Button("Update", key="--update")
             ])
 
@@ -148,6 +149,7 @@ class SegmentationInterface(abc.ABC):
                 sg.Button("Polygon Histogram", key="--poly-histo"),
                 sg.Button("Export Segmentation", key="--export"),
                 sg.Button("Contour Color", key="--contour-color"),
+                sg.Button("Reset", key="--reset"),
             ])
 
         layout.append([
@@ -216,6 +218,10 @@ class SegmentationInterface(abc.ABC):
             if event == "--thickness":
                 new_image = array.copy()
                 update_image(new_image, segments, values["--thickness"])
+
+            if event == "--reset":
+                new_image = array.copy()
+                update_image(new_image, [], values["--thickness"])
 
             if event == "--contour-color":
                 contour_color = CONTOUR_COLOR_CYCLE.__next__()
