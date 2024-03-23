@@ -48,7 +48,7 @@ def start(image_path: str):
                     restored_polygons = []
                     for polygon in polygons:
                         restored_polygons.append([
-                            (p[0] / scale, p[1] / scale) for p in polygon
+                            (p[1] / scale, p[0] / scale) for p in polygon
                         ])
 
                     if path != "":
