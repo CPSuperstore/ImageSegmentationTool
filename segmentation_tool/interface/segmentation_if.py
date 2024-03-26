@@ -55,7 +55,7 @@ class SegmentationInterface(abc.ABC):
         return interface
 
     def start(self, image_path: str):
-        def update_image(image_array, polygons=None, thickness=1):
+        def update_image(image_array, polygons=None):
             nonlocal last_image
             nonlocal latest_segments
 
@@ -67,13 +67,6 @@ class SegmentationInterface(abc.ABC):
                     swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
 
                     cv2.fillPoly(image_array, np.array([swapped_coords]).astype(int), contour_color)
-
-                    # cv2.drawContours(
-                    #     image_array, np.array([swapped_coords]).astype(int), -1, contour_color,
-                    #     thickness=int(thickness)
-                    # )
-
-                    # draw.polygon(polygon)
 
             last_image = Image.fromarray(image_array.astype(np.uint8))
             last_image.thumbnail((750, 500))
@@ -128,12 +121,6 @@ class SegmentationInterface(abc.ABC):
                     background_color='black',
                     # drag_submits=True,
                     enable_events=True
-                )
-            ],
-            [
-                sg.Text("Line Thickness"),
-                sg.Slider(
-                    range=[1, 30], default_value=1, enable_events=True, key="--thickness", orientation='horizontal'
                 )
             ]
         ]
@@ -215,7 +202,7 @@ class SegmentationInterface(abc.ABC):
                     update_image(segments)
 
                 else:
-                    update_image(new_image, segments, values["--thickness"])
+                    update_image(new_image, segments)
 
             if event == "--home":
                 break
@@ -248,18 +235,14 @@ class SegmentationInterface(abc.ABC):
                         with open(path, 'wb') as f:
                             f.write(pickle.dumps(latest_segments))
 
-            if event == "--thickness":
-                new_image = array.copy()
-                update_image(new_image, segments, values["--thickness"])
-
             if event == "--reset":
                 new_image = array.copy()
-                update_image(new_image, [], values["--thickness"])
+                update_image(new_image, [])
 
             if event == "--contour-color":
                 contour_color = CONTOUR_COLOR_CYCLE.__next__()
                 new_image = array.copy()
-                update_image(new_image, segments, values["--thickness"])
+                update_image(new_image, segments)
 
             if event == "--median-filter":
                 size = int(values["--median-filter-size"])
@@ -268,7 +251,7 @@ class SegmentationInterface(abc.ABC):
                 if size > 0:
                     array = ndimage.median_filter(array, size=size)
 
-                update_image(array.copy(), segments, values["--thickness"])
+                update_image(array.copy(), segments)
 
             if event == "--poly-histo":
                 polygons = [p for p in segments if len(p) > 4]
