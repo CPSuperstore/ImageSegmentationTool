@@ -237,6 +237,7 @@ class SegmentationInterface(abc.ABC):
 
             if event == "--reset":
                 new_image = array.copy()
+                segments.clear()
                 update_image(new_image, [])
 
             if event == "--contour-color":
