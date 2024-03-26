@@ -1,3 +1,4 @@
+import pickle
 import sys
 
 import segmentation_tool.interface.morph_acwe as morph_acwe
@@ -17,11 +18,9 @@ MENU_REGISTER = {
     "ThresholdSegmentation": threshold_segmentation.ThresholdSegmentation()
 }
 
-if len(sys.argv) >= 3:
-    method = MENU_REGISTER[sys.argv[1]]
-    method.start(sys.argv[2])
 
-else:
+def locked_menu(loaded_data=None):
+    print(loaded_data)
     menu = menu_if.Menu(MENU_REGISTER.keys())
     path = None
 
@@ -33,3 +32,19 @@ else:
 
         seg_screen = MENU_REGISTER[segment]
         seg_screen.start(path)
+
+
+if __name__ == '__main__':
+    if len(sys.argv) >= 3:
+        if sys.argv[1] == "--connect":
+            with open(sys.argv[2], 'rb') as f:
+                loaded_data = pickle.loads(f.read())
+
+            locked_menu(loaded_data)
+
+        else:
+            method = MENU_REGISTER[sys.argv[1]]
+            method.start(sys.argv[2])
+
+    else:
+        locked_menu()
