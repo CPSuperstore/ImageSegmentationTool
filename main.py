@@ -8,6 +8,7 @@ import segmentation_tool.interface.graph_cut as graph_cut
 import segmentation_tool.interface.menu as menu_if
 import segmentation_tool.interface.manual_segmentation as manual_segmentation
 import segmentation_tool.interface.threshold_segmentation as threshold_segmentation
+import segmentation_tool.interface.color_proximity_segmentation as color_proximity_segmentation
 
 MENU_REGISTER = {
     "MorphACWE": morph_acwe.MorphACWE(),
@@ -15,7 +16,8 @@ MENU_REGISTER = {
     "SLIC": slic.SLIC(),
     "GraphCut": graph_cut.GraphCut(),
     "ManualSegmentation": manual_segmentation,
-    "ThresholdSegmentation": threshold_segmentation.ThresholdSegmentation()
+    "ThresholdSegmentation": threshold_segmentation.ThresholdSegmentation(),
+    "ColorProximitySegmentation": color_proximity_segmentation.ColorProximitySegmentation()
 }
 
 

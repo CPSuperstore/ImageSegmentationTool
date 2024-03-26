@@ -66,12 +66,12 @@ class SegmentationInterface(abc.ABC):
                 for segment in polygons:
                     swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
 
-                    cv2.fillPoly(image_array, np.array([swapped_coords]).astype(int), [255, 255, 255])
+                    cv2.fillPoly(image_array, np.array([swapped_coords]).astype(int), contour_color)
 
-                    cv2.drawContours(
-                        image_array, np.array([swapped_coords]).astype(int), -1, contour_color,
-                        thickness=int(thickness)
-                    )
+                    # cv2.drawContours(
+                    #     image_array, np.array([swapped_coords]).astype(int), -1, contour_color,
+                    #     thickness=int(thickness)
+                    # )
 
                     # draw.polygon(polygon)
 
@@ -176,10 +176,30 @@ class SegmentationInterface(abc.ABC):
 
         while True:
             event, values = window.read()
+            update = False
             if event is None:
                 break
 
-            if (event in control_kwargs and not self._is_slow()) or (self._is_slow() and event == "--update"):
+            if event in color_button_keys:
+                awaiting_color_button = event
+
+            if event == '-GRAPH-':
+                if awaiting_color_button is not None:
+                    x, y = values[event]
+                    color = last_image.getpixel((x, last_image.height - y))
+
+                    window[awaiting_color_button].update(button_color=('black', '#%02x%02x%02x' % color))
+                    color_button_selections[awaiting_color_button] = color
+
+                    awaiting_color_button = None
+
+                    if not self._is_slow():
+                        update = True
+
+            if (
+                    (event in control_kwargs and not self._is_slow()) or (self._is_slow() and event == "--update") or update
+            ) and event not in color_button_keys:
+
                 for v in color_button_selections.values():
                     if v is None:
                         continue
@@ -267,19 +287,6 @@ class SegmentationInterface(abc.ABC):
                     plt.xlabel("Area")
 
                     plt.show()
-
-            if event in color_button_keys:
-                awaiting_color_button = event
-
-            if event == '-GRAPH-':
-                if awaiting_color_button is not None:
-                    x, y = values[event]
-                    color = last_image.getpixel((x, last_image.height - y))
-
-                    window[awaiting_color_button].update(button_color=('black', '#%02x%02x%02x' % color))
-                    color_button_selections[awaiting_color_button] = color
-
-                    awaiting_color_button = None
 
         window.close()
 
