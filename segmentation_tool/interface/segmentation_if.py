@@ -63,9 +63,12 @@ class SegmentationInterface(abc.ABC):
 
             if polygons is not None:
 
+                for segment in total_segments:
+                    swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
+                    cv2.fillPoly(image_array, np.array([swapped_coords]).astype(int), np.array(contour_color) * 0.75)
+
                 for segment in polygons:
                     swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
-
                     cv2.fillPoly(image_array, np.array([swapped_coords]).astype(int), contour_color)
 
             last_image = Image.fromarray(image_array.astype(np.uint8))
@@ -78,6 +81,8 @@ class SegmentationInterface(abc.ABC):
             graph.draw_image(data=data, location=(0, graph_height))
 
         segments = None
+        total_segments = []
+
         last_image: PIL.Image.Image = None
 
         controls = self._get_controls()
@@ -94,7 +99,7 @@ class SegmentationInterface(abc.ABC):
 
         else:
             im = Image.open(image_path)
-            mask = None
+            mask = np.ones(im.size[::-1]).astype(bool)
             attached = False
 
         array = np.array(im, dtype=np.uint8)
@@ -126,26 +131,18 @@ class SegmentationInterface(abc.ABC):
         ]
         layout.extend(self._get_interface())
 
-        if self._is_slow():
-            layout.append([
-                sg.Button("Home", key="--home"),
-                sg.Button("Save Image", key="--save"),
-                sg.Button("Polygon Histogram", key="--poly-histo"),
-                sg.Button("Export Segmentation", key="--export"),
-                sg.Button("Contour Color", key="--contour-color"),
-                sg.Button("Reset", key="--reset"),
-                sg.Button("Update", key="--update")
-            ])
+        layout.append([
+            sg.Button("Home", key="--home"),
+            sg.Button("Save Image", key="--save"),
+            sg.Button("Polygon Histogram", key="--poly-histo"),
+            sg.Button("Export Segmentation", key="--export"),
+            sg.Button("Contour Color", key="--contour-color"),
+            sg.Button("Reset", key="--reset"),
+            sg.Button("Save Segments", key="--save-segments"),
+        ])
 
-        else:
-            layout.append([
-                sg.Button("Home", key="--home"),
-                sg.Button("Save Image", key="--save"),
-                sg.Button("Polygon Histogram", key="--poly-histo"),
-                sg.Button("Export Segmentation", key="--export"),
-                sg.Button("Contour Color", key="--contour-color"),
-                sg.Button("Reset", key="--reset"),
-            ])
+        if self._is_slow():
+            layout[-1].append(sg.Button("Update", key="--update"))
 
         layout.append([
             sg.Slider(
@@ -183,26 +180,55 @@ class SegmentationInterface(abc.ABC):
                     if not self._is_slow():
                         update = True
 
+            if event == "--save-segments":
+                if latest_segments is not None:
+                    total_segments.extend(latest_segments)
+                    segments.clear()
+                    latest_segments.clear()
+
+                    # remove duplicates
+                    full_total_segments = total_segments.copy()
+                    total_segments.clear()
+
+                    for segment in full_total_segments:
+                        for s in total_segments:
+                            if np.array_equal(s, segment):
+                                break
+                        else:
+                            total_segments.append(segment)
+
+                    # update mask
+                    for segment in total_segments:
+                        swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
+                        mask = mask.astype(int)
+                        cv2.fillPoly(mask, np.array([swapped_coords]).astype(int), 0)
+                        mask = mask.astype(bool)
+
+                update = True
+
             if (
                     (event in control_kwargs and not self._is_slow()) or (self._is_slow() and event == "--update") or update
             ) and event not in color_button_keys:
 
+                valid = True
                 for v in color_button_selections.values():
                     if v is None:
-                        continue
+                        valid = False
+                        break
 
-                kwargs = {k: values[k] for k in control_kwargs if k not in color_button_keys}
-                kwargs.update(color_button_selections)
+                if valid:
+                    kwargs = {k: values[k] for k in control_kwargs if k not in color_button_keys}
+                    kwargs.update(color_button_selections)
 
-                new_image = array.copy()
+                    new_image = array.copy()
 
-                segments = self._segment(new_image, mask, kwargs)
+                    segments = self._segment(new_image, mask, kwargs)
 
-                if not isinstance(segments, list) and segments.shape == new_image.shape:
-                    update_image(segments)
+                    if not isinstance(segments, list) and segments.shape == new_image.shape:
+                        update_image(segments)
 
-                else:
-                    update_image(new_image, segments)
+                    else:
+                        update_image(new_image, segments)
 
             if event == "--home":
                 break
@@ -219,9 +245,11 @@ class SegmentationInterface(abc.ABC):
                     last_image.save(path)
 
             if event == "--export":
+                total_segments.extend(latest_segments)
+
                 if attached:
                     window.close()
-                    return latest_segments
+                    return total_segments
 
                 else:
                     path = sg.filedialog.asksaveasfilename(
@@ -233,7 +261,7 @@ class SegmentationInterface(abc.ABC):
 
                     if path != "":
                         with open(path, 'wb') as f:
-                            f.write(pickle.dumps(latest_segments))
+                            f.write(pickle.dumps(total_segments))
 
             if event == "--reset":
                 new_image = array.copy()
