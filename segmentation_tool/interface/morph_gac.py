@@ -15,7 +15,7 @@ class MorphGAC(segmentation_if.SegmentationInterface):
             segmentation_if.Control("Balloon", "number", "balloon", [-1, 1], step=0.01),
         ]
 
-    def _segment(self, image, kwargs):
+    def _segment(self, image, mask, kwargs):
         gray_image = rgb2gray(image)
 
         init_ls = np.zeros(gray_image.shape, dtype=np.int8)
@@ -30,4 +30,4 @@ class MorphGAC(segmentation_if.SegmentationInterface):
             **kwargs
         )
 
-        return skimage.measure.find_contours(segmented, 0.5)
+        return skimage.measure.find_contours(segmented, 0.5, mask=mask)

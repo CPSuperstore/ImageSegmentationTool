@@ -1,3 +1,5 @@
+import numpy as np
+import skimage
 from skimage.segmentation import slic, mark_boundaries
 
 import segmentation_tool.interface.segmentation_if as segmentation_if
@@ -14,7 +16,7 @@ class SLIC(segmentation_if.SegmentationInterface):
             segmentation_if.Control("Max Size Factor", "number", "max_size_factor", default=3, allowed_values=[1, 10], step=0.01),
         ]
 
-    def _segment(self, image, kwargs):
+    def _segment(self, image, mask, kwargs):
         kwargs["n_segments"] = int(kwargs["n_segments"])
         kwargs["max_num_iter"] = int(kwargs["max_num_iter"])
 
@@ -22,4 +24,13 @@ class SLIC(segmentation_if.SegmentationInterface):
             kwargs["compactness"] = 0.01
 
         segments = slic(image, **kwargs)
-        return mark_boundaries(image, segments, color=(1, 0, 0)) * 255
+
+        result = []
+        for segment in np.unique(segments):
+            if segment == 0:
+                continue
+
+            segments = skimage.measure.find_contours(segments == segment, 0.5, mask=mask)
+            result.extend(segments)
+
+        return result

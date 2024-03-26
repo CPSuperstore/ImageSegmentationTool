@@ -23,7 +23,7 @@ class GraphCut(segmentation_if.SegmentationInterface):
             segmentation_if.Control("Sigma", "number", "sigma", [0, 200], default=100),
         ]
 
-    def _segment(self, image, kwargs):
+    def _segment(self, image, mask, kwargs):
         image = np.uint8(rgb2gray(image) * 255)
 
         pil_image = Image.fromarray(image, mode='L')
@@ -124,4 +124,4 @@ class GraphCut(segmentation_if.SegmentationInterface):
                 w = kappa * exp(-(abs(vector_image[i] - vector_image[i + n]) ** 2) / sigma)
                 graph.add_edge(i, i + n, w[0], kappa - w[0])  # edges between two pixels
 
-        return skimage.measure.find_contours(segmented, 0.5)
+        return skimage.measure.find_contours(segmented, 0.5, mask=mask)

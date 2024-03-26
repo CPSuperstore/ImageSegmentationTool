@@ -20,8 +20,7 @@ MENU_REGISTER = {
 
 
 def locked_menu(loaded_data=None):
-    print(loaded_data)
-    menu = menu_if.Menu(MENU_REGISTER.keys())
+    menu = menu_if.Menu(MENU_REGISTER.keys(), loaded_data=loaded_data)
     path = None
 
     while True:
@@ -31,7 +30,12 @@ def locked_menu(loaded_data=None):
             break
 
         seg_screen = MENU_REGISTER[segment]
-        seg_screen.start(path)
+        result = seg_screen.start(path)
+
+        if result is not None:
+            return result
+
+        break
 
 
 if __name__ == '__main__':
@@ -40,7 +44,10 @@ if __name__ == '__main__':
             with open(sys.argv[2], 'rb') as f:
                 loaded_data = pickle.loads(f.read())
 
-            locked_menu(loaded_data)
+            result = locked_menu(loaded_data)
+
+            with open(sys.argv[2], 'wb') as f:
+                f.write(pickle.dumps(result))
 
         else:
             method = MENU_REGISTER[sys.argv[1]]

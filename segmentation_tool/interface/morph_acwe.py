@@ -15,7 +15,7 @@ class MorphACWE(segmentation_if.SegmentationInterface):
             segmentation_if.Control("Lambda 2", "number", "lambda2", [0, 2], default=1, step=0.01),
         ]
 
-    def _segment(self, image, kwargs):
+    def _segment(self, image, mask, kwargs):
         gray_image = rgb2gray(image)
         init_ls = checkerboard_level_set(gray_image.shape, int(kwargs.pop("square_size")))
 
@@ -24,6 +24,6 @@ class MorphACWE(segmentation_if.SegmentationInterface):
         kwargs["init_level_set"] = init_ls
 
         segmented = morphological_chan_vese(gray_image, **kwargs)
-        segments = skimage.measure.find_contours(segmented, 0.5)
+        segments = skimage.measure.find_contours(segmented, 0.5, mask=mask)
 
         return segments

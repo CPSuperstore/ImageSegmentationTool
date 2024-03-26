@@ -28,7 +28,7 @@ class SegmentationInterface(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def _segment(self, image, kwargs):
+    def _segment(self, image, mask, kwargs):
         pass
 
     def _get_interface(self):
@@ -94,7 +94,15 @@ class SegmentationInterface(abc.ABC):
         color_button_selections = {c.kwarg: None for c in controls if c.control_type == "color"}
         awaiting_color_button = None
 
-        im = Image.open(image_path)
+        if isinstance(image_path, list):
+            im = Image.fromarray(image_path[0].astype(np.uint8))
+            mask = image_path[1]
+            attached = True
+
+        else:
+            im = Image.open(image_path)
+            mask = None
+            attached = False
 
         array = np.array(im, dtype=np.uint8)
         array = array[:, :, :3]
@@ -181,7 +189,7 @@ class SegmentationInterface(abc.ABC):
 
                 new_image = array.copy()
 
-                segments = self._segment(new_image, kwargs)
+                segments = self._segment(new_image, mask, kwargs)
 
                 if not isinstance(segments, list) and segments.shape == new_image.shape:
                     update_image(segments)
@@ -204,16 +212,21 @@ class SegmentationInterface(abc.ABC):
                     last_image.save(path)
 
             if event == "--export":
-                path = sg.filedialog.asksaveasfilename(
-                    filetypes=(("Segmentation Data", "*.dat"),),
-                    defaultextension="dat",
-                    parent=window.TKroot,
-                    title="Save As"
-                )
+                if attached:
+                    window.close()
+                    return latest_segments
 
-                if path != "":
-                    with open(path, 'wb') as f:
-                        f.write(pickle.dumps(latest_segments))
+                else:
+                    path = sg.filedialog.asksaveasfilename(
+                        filetypes=(("Segmentation Data", "*.dat"),),
+                        defaultextension="dat",
+                        parent=window.TKroot,
+                        title="Save As"
+                    )
+
+                    if path != "":
+                        with open(path, 'wb') as f:
+                            f.write(pickle.dumps(latest_segments))
 
             if event == "--thickness":
                 new_image = array.copy()
