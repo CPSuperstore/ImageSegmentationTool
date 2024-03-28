@@ -24,22 +24,10 @@ class GraphCut(segmentation_if.SegmentationInterface):
         ]
 
     def _segment(self, image, mask, kwargs):
-        image = np.uint8(rgb2gray(image) * 255)
-
-        pil_image = Image.fromarray(image, mode='L')
-
         kappa = kwargs["kappa"]
         sigma = kwargs["sigma"]
-
-        # # TODO: Add way to control these bboxes
-        # foreground_bbox = (225, 142, 279, 185)
-        # background_bbox = (7, 120, 61, 163)
-
-        # foreground = pil_image.crop(foreground_bbox)
-        # background = pil_image.crop(background_bbox)
-
-        # foreground = array(foreground)
-        # background = array(background)
+        
+        image = np.uint8(rgb2gray(image) * 255)
 
         foreground = image.copy()
         background = image.copy()
@@ -51,7 +39,7 @@ class GraphCut(segmentation_if.SegmentationInterface):
         foreground_probability_vector = ones(shape=image.shape)
         background_probability_vector = ones(shape=image.shape)
 
-        # Converting the image array to a vector for ease.
+        # Converting the input_image array to a vector for ease.
         vector_image = image.reshape(-1, 1)
 
         m, n = image.shape[0], image.shape[1]
@@ -74,24 +62,33 @@ class GraphCut(segmentation_if.SegmentationInterface):
             for j in range(image.shape[1]):
 
                 # Probability of a pixel being in the foreground
-                foreground_probability_vector[i, j] = -log(
-                    abs(image[i, j] - foreground_mean) /
-                    (abs(image[i, j] - foreground_mean) + abs(image[i, j] - background_mean))
-                )
+                denominator = (abs(image[i, j] - foreground_mean) + abs(image[i, j] - background_mean))
+                if denominator == 0:
+                    foreground_probability_vector[i, j] = np.nan
+                else:
+                    foreground_probability_vector[i, j] = -log(abs(image[i, j] - foreground_mean) / denominator)
 
                 # Probability of a pixel being in the background
-                background_probability_vector[i, j] = -log(
-                    abs(image[i, j] - background_mean) /
-                    (abs(image[i, j] - background_mean) + abs(image[i, j] - foreground_mean))
-                )
+                denominator = (abs(image[i, j] - background_mean) + abs(image[i, j] - foreground_mean))
+                if denominator == 0:
+                    background_probability_vector[i, j] = np.nan
+                else:
+                    background_probability_vector[i, j] = -log(abs(image[i, j] - background_mean) / denominator)
+
+                if isnan(foreground_probability_vector[i, j]):
+                    foreground_probability_vector[i, j] = 1
+
+                if isnan(background_probability_vector[i, j]):
+                    background_probability_vector[i, j] = 0
 
         # convert  to column vector for ease
         foreground_probability_vector = foreground_probability_vector.reshape(-1, 1)
         background_probability_vector = background_probability_vector.reshape(-1, 1)
 
-        # normalize the input image vector
+        # normalize the input input_image vector
         for i in range(vector_image.shape[0]):
-            vector_image[i] = vector_image[i] / linalg.norm(vector_image[i])
+            if linalg.norm(vector_image[i]) != 0:
+                vector_image[i] = vector_image[i] / linalg.norm(vector_image[i])
 
         # checking the 4-neighborhood pixels
         for i in range(m * n):
@@ -124,4 +121,10 @@ class GraphCut(segmentation_if.SegmentationInterface):
                 w = kappa * exp(-(abs(vector_image[i] - vector_image[i + n]) ** 2) / sigma)
                 graph.add_edge(i, i + n, w[0], kappa - w[0])  # edges between two pixels
 
+        if segmented.shape[0] < 2 or segmented.shape[1] < 2:
+            return None
+
+        # if mask is not None:
+        #     segmented = np.logical_and(segmented, mask)
         return skimage.measure.find_contours(segmented, 0.5, mask=mask)
+

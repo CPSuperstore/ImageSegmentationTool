@@ -71,6 +71,11 @@ class SegmentationInterface(abc.ABC):
                     swapped_coords = np.dstack((segment[:, 1], segment[:, 0]))
                     cv2.fillPoly(image_array, np.array([swapped_coords]).astype(int), contour_color)
 
+                    # cv2.drawContours(
+                    #     image_array, np.array([swapped_coords]).astype(int), -1, [0, 255, 255],
+                    #     thickness=int(1)
+                    # )
+
             last_image = Image.fromarray(image_array.astype(np.uint8))
             last_image.thumbnail((750, 500))
 
@@ -186,16 +191,16 @@ class SegmentationInterface(abc.ABC):
                     segments.clear()
                     latest_segments.clear()
 
-                    # remove duplicates
-                    full_total_segments = total_segments.copy()
-                    total_segments.clear()
-
-                    for segment in full_total_segments:
-                        for s in total_segments:
-                            if np.array_equal(s, segment):
-                                break
-                        else:
-                            total_segments.append(segment)
+                    # # remove duplicates
+                    # full_total_segments = total_segments.copy()
+                    # total_segments.clear()
+                    #
+                    # for segment in full_total_segments:
+                    #     for s in total_segments:
+                    #         if np.array_equal(s, segment):
+                    #             break
+                    #     else:
+                    #         total_segments.append(segment)
 
                     # update mask
                     for segment in total_segments:
@@ -224,7 +229,7 @@ class SegmentationInterface(abc.ABC):
 
                     segments = self._segment(new_image, mask, kwargs)
 
-                    if not isinstance(segments, list) and segments.shape == new_image.shape:
+                    if not isinstance(segments, (list, tuple)) and segments.shape == new_image.shape:
                         update_image(segments)
 
                     else:
@@ -301,6 +306,23 @@ class SegmentationInterface(abc.ABC):
                     plt.show()
 
         window.close()
+
+    def find_contours(self, image, mask):
+        image = np.logical_and(image, mask)
+
+        contours, _ = cv2.findContours(image.astype(int), cv2.RETR_FLOODFILL, cv2.CHAIN_APPROX_NONE)
+
+        polygons = []
+        for obj in contours:
+            coords = []
+
+            for point in obj:
+                coords.append([point[0][1], point[0][0]])
+
+            polygons.append(np.array(coords))
+
+        return polygons
+
 
 
 class Control:

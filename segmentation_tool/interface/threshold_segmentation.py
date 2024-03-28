@@ -28,4 +28,4 @@ class ThresholdSegmentation(segmentation_if.SegmentationInterface):
                 if fg_distance[y][x] < bg_distance[y][x]:
                     threshold_mask[y][x] = 1
 
-        return skimage.measure.find_contours(threshold_mask, 0.5, mask=mask)
+        return self.find_contours(threshold_mask, mask)

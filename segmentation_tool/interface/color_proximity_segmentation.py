@@ -1,3 +1,4 @@
+import cv2
 import numpy as np
 import skimage
 
@@ -15,5 +16,6 @@ class ColorProximitySegmentation(segmentation_if.SegmentationInterface):
         color = kwargs["color"]
         proximity = kwargs["proximity"]
 
-        color_distance = np.linalg.norm(image - color, axis=2) <= proximity
-        return skimage.measure.find_contours(color_distance, 0.5, mask=mask)
+        color_distance = (np.linalg.norm(image - color, axis=2) <= proximity).astype(int)
+        return self.find_contours(color_distance, mask)
+        # return skimage.measure.find_contours(color_distance, 0.5, mask=mask)

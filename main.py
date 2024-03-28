@@ -37,8 +37,6 @@ def locked_menu(loaded_data=None):
         if result is not None:
             return result
 
-        break
-
 
 if __name__ == '__main__':
     if len(sys.argv) >= 3:
